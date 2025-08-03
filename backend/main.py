@@ -24,7 +24,13 @@ app.add_middleware(
 )
 
 # Initialize Anthropic client
-anthropic_client = Client(api_key=os.getenv("ANTHROPIC_API_KEY"))
+api_key = os.getenv("ANTHROPIC_API_KEY")
+if not api_key:
+    print("WARNING: ANTHROPIC_API_KEY not found. Please set it in environment variables.")
+    print("Available env vars:", list(os.environ.keys()))
+    raise ValueError("ANTHROPIC_API_KEY is required")
+
+anthropic_client = Client(api_key=api_key)
 
 # Conversation logging
 CONVERSATIONS_FILE = "daily_conversations.txt"
