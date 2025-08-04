@@ -138,7 +138,7 @@ export default function Home() {
           <div className="text-center mb-8">
             <div className="flex justify-center items-center gap-3 mb-4">
               <ShoppingBasket className="w-8 h-8 text-green-600" />
-              <h1 className="text-3xl font-bold text-gray-800">Dave's Village Shop</h1>
+              <h1 className="text-3xl font-bold text-gray-800">Dave&apos;s Village Shop</h1>
             </div>
             <p className="text-gray-600">Honest prices, friendly service • Ask Dave anything!</p>
           </div>
@@ -257,7 +257,7 @@ export default function Home() {
 
           {/* Footer */}
           <div className="text-center text-sm text-gray-500 mt-6">
-            <p>🏪 Honesty Box System • Pay what's fair • Village trust since 1987</p>
+            <p>🏪 Honesty Box System • Pay what&apos;s fair • Village trust since 1987</p>
           </div>
         </div>
       </div>
