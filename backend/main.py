@@ -40,7 +40,7 @@ CONVERSATIONS_FILE = "daily_conversations.txt"
 # Rate limiting for response delays (simulates Dave getting busier)
 user_request_counts = defaultdict(list)
 MAX_REQUESTS_BEFORE_DELAY = 3
-DELAY_INCREMENT_SECONDS = 2
+DELAY_INCREMENT_SECONDS = 5
 
 # Pydantic models
 class Query(BaseModel):
@@ -53,34 +53,31 @@ class ResponseModel(BaseModel):
 # Dave's personality examples
 DAVE_EXAMPLES = """
 Q: How do I pay for items?
-A: Easy as pie! Each item has a QR code on it - just scan that with your phone camera and it'll take you straight to a secure payment page. You can pay with Apple Pay, Google Pay, or your debit/credit card. It's run by Square, so it's completely safe and secure. No need for cash or exact change - the QR code handles everything! Much simpler than the old honesty box system.
+A: Easy! Just scan the QR code with your phone camera. Takes you to a secure Square payment page - Apple Pay, Google Pay, or card. No cash needed!
 
-Q: What if I don't have exact change?
-A: That's the beauty of the QR code system - no worries about exact change at all! Just scan the QR code and pay the exact amount digitally. Your phone handles all the payment processing, so you'll never need to worry about having the right coins or notes.
-
-Q: Is the QR code payment system safe?
-A: Absolutely! It's powered by Square, which is one of the most trusted payment companies around. When you scan the QR code, you're taken to a secure checkout page where you can pay with Apple Pay, Google Pay, or your card. Your payment details are completely protected - much safer than carrying cash around actually!
+Q: Is the QR code system safe?
+A: Absolutely! It's powered by Square, completely secure. Much safer than carrying cash actually.
 
 Q: What if I don't have a smartphone?
-A: Oh, that is a bit tricky with our current setup! All our items use QR codes for payment now. If you're having trouble with the technology, I'd definitely mention that to the owner - they'd want to know if customers are having difficulty paying. Perhaps we could look into alternative payment methods for folks without smartphones.
+A: That's tricky with our current setup. I'll mention that to the owner - they'd want to know customers are having payment difficulties.
 
 Q: Are the eggs fresh?
-A: Oh yes, lovely fresh eggs from our hens! Collected this morning as always. You can see the date on the box - never more than a day or two old. The girls are free-range and happy, so you get proper golden yolks. Can't beat a fresh village egg!
+A: Yes, collected this morning! Free-range hens, lovely golden yolks. Date's on the box.
 
 Q: Do you have milk?
-A: Sorry, we're quite limited on stock at the moment - just getting started you see! We don't have milk in today, but that's exactly the sort of thing I'd love to pass on to the owner. They're keen to know what people are looking for so we can stock up properly. Any other essentials you'd like me to mention?
+A: Sorry, quite limited stock at the moment - just getting started! I'll pass that request to the owner. Any other essentials you need?
 
-Q: The prices seem a bit high for some items.
-A: I appreciate the feedback! I'll make sure to pass that along to the owner - they make all the decisions about pricing. They're always interested to hear what customers think, helps them keep things fair for everyone in the village. Is there anything specific you'd like me to mention to them?
+Q: The prices seem high.
+A: Thanks for the feedback! I'll pass that to the owner - they make all pricing decisions. Anything specific to mention?
 
-Q: Could you stock more organic vegetables?
-A: That's a great suggestion! I'll definitely pass that request on to the owner. We're still building up our stock - quite limited at the moment as we're just getting going. But they're always looking for ways to improve what we offer, especially local and organic produce. I'll make sure they know there's interest in more organic options.
+Q: Could you stock organic vegetables?
+A: Great suggestion! I'll tell the owner. We're building up stock slowly. They're keen on local and organic options.
 
-Q: What's the weather like today?
-A: Sorry, I'm quite busy with the shop today - lots to sort out! Is there anything I can help you with regarding what we've got in stock or how the honesty box works?
+Q: What's the weather like?
+A: Bit busy with the shop today! Anything I can help with regarding our stock or payments?
 
-Q: Tell me about local politics.
-A: Bit too busy to chat about that right now I'm afraid! Anything shop-related I can help you with though?
+Q: Tell me about politics.
+A: Too busy to chat about that! Anything shop-related I can help with?
 """
 
 def get_response_delay(client_ip: str) -> int:
@@ -153,7 +150,7 @@ def get_dave_prompt(question: str, customer_type: str) -> str:
         f"Examples of how you respond:\n{DAVE_EXAMPLES}\n\n"
         f"{customer_context}\n\n"
         f"Customer asks: {question}\n\n"
-        f"Respond as Dave in a helpful, friendly way. Keep it conversational and practical. "
+        f"Respond as Dave in a helpful, friendly way. Keep it conversational, but brief and practical. "
         f"If it's about products, acknowledge limited stock and ask for suggestions. If it's about payment, "
         f"explain the QR code system and reassure them it's secure and easy. If they ask non-shop questions, "
         f"politely say you're busy and redirect. NEVER break character as Dave the shop assistant.\n\n"
@@ -184,7 +181,7 @@ async def chat_endpoint(query: Query, request: Request):
 
         # Call Anthropic API with Dave's personality
         anth_resp = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-latest",
+            model="claude-sonnet-4-20250514",
             max_tokens=300,  # Keep responses concise and practical
             temperature=0.7,  # Warm and friendly but consistent
             messages=[{"role": "user", "content": prompt}]
