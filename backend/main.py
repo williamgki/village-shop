@@ -1,6 +1,8 @@
 import os
 import traceback
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
+from collections import defaultdict
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,6 +37,11 @@ anthropic_client = Client(api_key=api_key)
 # Conversation logging
 CONVERSATIONS_FILE = "daily_conversations.txt"
 
+# Rate limiting for response delays (simulates Dave getting busier)
+user_request_counts = defaultdict(list)
+MAX_REQUESTS_BEFORE_DELAY = 3
+DELAY_INCREMENT_SECONDS = 2
+
 # Pydantic models
 class Query(BaseModel):
     question: str
@@ -55,14 +62,40 @@ Q: Are the eggs fresh?
 A: Oh yes, lovely fresh eggs from our hens! Collected this morning as always. You can see the date on the box - never more than a day or two old. The girls are free-range and happy, so you get proper golden yolks. Can't beat a fresh village egg!
 
 Q: Do you have milk?
-A: Should do! Check the little fridge unit - we get deliveries Tuesday and Friday from the local dairy. All fresh, usually gone by Saturday though - very popular! If we're out, there might be some long-life cartons on the shelf as backup.
+A: Sorry, we're quite limited on stock at the moment - just getting started you see! We don't have milk in today, but that's exactly the sort of thing I'd love to pass on to the owner. They're keen to know what people are looking for so we can stock up properly. Any other essentials you'd like me to mention?
 
 Q: The prices seem a bit high for some items.
 A: I appreciate the feedback! I'll make sure to pass that along to the owner - they make all the decisions about pricing. They're always interested to hear what customers think, helps them keep things fair for everyone in the village. Is there anything specific you'd like me to mention to them?
 
 Q: Could you stock more organic vegetables?
-A: That's a great suggestion! I'll definitely pass that request on to the owner. They're always looking for ways to improve what we offer, especially when it comes to local and organic produce. I'll make sure they know there's interest in more organic options - feedback like yours really helps them make decisions about what to stock.
+A: That's a great suggestion! I'll definitely pass that request on to the owner. We're still building up our stock - quite limited at the moment as we're just getting going. But they're always looking for ways to improve what we offer, especially local and organic produce. I'll make sure they know there's interest in more organic options.
+
+Q: What's the weather like today?
+A: Sorry, I'm quite busy with the shop today - lots to sort out! Is there anything I can help you with regarding what we've got in stock or how the honesty box works?
+
+Q: Tell me about local politics.
+A: Bit too busy to chat about that right now I'm afraid! Anything shop-related I can help you with though?
 """
+
+def get_response_delay(client_ip: str) -> int:
+    """Calculate response delay based on request frequency."""
+    now = datetime.now()
+    # Clean old requests (older than 10 minutes)
+    cutoff = now - timedelta(minutes=10)
+    user_request_counts[client_ip] = [req for req in user_request_counts[client_ip] if req > cutoff]
+    
+    # Add current request
+    user_request_counts[client_ip].append(now)
+    
+    # Calculate delay based on request count
+    request_count = len(user_request_counts[client_ip])
+    if request_count <= MAX_REQUESTS_BEFORE_DELAY:
+        return 0
+    
+    # Increasing delay for frequent requests
+    excess_requests = request_count - MAX_REQUESTS_BEFORE_DELAY
+    delay_seconds = excess_requests * DELAY_INCREMENT_SECONDS
+    return min(delay_seconds, 20)  # Cap at 20 seconds
 
 def log_conversation(customer_type: str, question: str, answer: str, client_ip: str):
     """Log conversation to daily text file for owner review."""
@@ -96,18 +129,24 @@ def get_dave_prompt(question: str, customer_type: str) -> str:
         f"You are Dave, the friendly assistant at a village honesty box shop. You're warm, helpful, "
         f"and have that genuine village shopkeeper personality. You trust your customers and "
         f"believe in community spirit.\n\n"
+        f"CRITICAL CHARACTER RULES:\n"
+        f"1. ONLY answer questions about the shop, products, prices, payment, or shop-related matters\n"
+        f"2. For ANY non-shop questions (weather, politics, personal life, general knowledge), politely "
+        f"say you're busy and redirect to shop matters\n"
+        f"3. NEVER break character - you are always Dave the shop assistant, nothing else\n"
+        f"4. The shop has VERY LIMITED STOCK as it's just getting started - apologize for limited "
+        f"selection and always ask for suggestions to pass to the owner\n\n"
         f"IMPORTANT: You actively collect customer feedback and pass it to the shop owner who makes "
         f"all decisions about products, prices, and stocking. When customers mention suggestions, "
         f"complaints, requests, or opinions about products/prices/service, ALWAYS acknowledge their "
-        f"feedback and specifically tell them you'll pass it along to the owner. Make this a natural "
-        f"part of your response.\n\n"
+        f"feedback and specifically tell them you'll pass it along to the owner.\n\n"
         f"Examples of how you respond:\n{DAVE_EXAMPLES}\n\n"
         f"{customer_context}\n\n"
         f"Customer asks: {question}\n\n"
         f"Respond as Dave in a helpful, friendly way. Keep it conversational and practical. "
-        f"If it's about products, mention what you typically stock. If it's about payment, "
-        f"explain the honesty system warmly. If they express ANY opinion, suggestion, or concern, "
-        f"proactively offer to pass it to the owner. Stay in character as a genuine village shop assistant.\n\n"
+        f"If it's about products, acknowledge limited stock and ask for suggestions. If it's about payment, "
+        f"explain the honesty system warmly. If they ask non-shop questions, politely say you're busy "
+        f"and redirect. NEVER break character as Dave the shop assistant.\n\n"
         f"Dave:"
     )
 
@@ -125,6 +164,11 @@ async def chat_endpoint(query: Query, request: Request):
     client_ip = get_client_ip(request)
     
     try:
+        # Add progressive delay for frequent requests (Dave gets busier)
+        delay_seconds = get_response_delay(client_ip)
+        if delay_seconds > 0:
+            await asyncio.sleep(delay_seconds)
+        
         # Build Dave's prompt (no vector database needed)
         prompt = get_dave_prompt(query.question, query.customer_type)
 
