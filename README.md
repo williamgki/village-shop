@@ -123,3 +123,5 @@ To adapt for different shops:
 ## License
 
 Built for village communities - use freely and spread the honesty! 🏪
+
+**Live Demo**: Coming soon!
