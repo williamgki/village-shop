@@ -11,12 +11,12 @@ interface Message {
 
 const SuggestedQuestions = ({ onQuestionClick }: { onQuestionClick: (question: string) => void }) => {
   const questions = [
+    "What products do you have?",
+    "How much is the Huel?",
     "How do I pay for items?",
-    "What if I don't have exact change?",
-    "Are the eggs fresh today?",
-    "Do you have milk available?",
-    "What payment methods do you accept?",
-    "How does the honesty box work?"
+    "Do you have other flavours?",
+    "Is the QR code system safe?",
+    "Could you stock other meal replacements?"
   ];
 
   return (
@@ -256,8 +256,9 @@ export default function Home() {
           )}
 
           {/* Footer */}
-          <div className="text-center text-sm text-gray-500 mt-6">
-            <p>🏪 Honesty Box System • Pay what&apos;s fair • Village trust since 1987</p>
+          <div className="text-center text-sm text-gray-500 mt-6 space-y-2">
+            <p>🏪 Not-for-profit village shop • Huel Black: Chocolate & Vanilla • £4.30 each</p>
+            <p className="text-xs">💬 Conversations are logged and reviewed by the shop owner for feedback and improvements</p>
           </div>
         </div>
       </div>
